@@ -147,6 +147,28 @@ input,select{border-color:var(--sand)}
 .orcid:hover{color:var(--ink)}.orcid span{text-decoration:underline;text-decoration-color:var(--sand);text-underline-offset:3px}
 .oid-ic{width:18px;height:18px;flex:none}.oid-line{margin:10px 0 0}
 .en-title{margin:10px 0 0;color:var(--mute);font-size:15px;max-width:52em}
+/* 投稿パネル */
+.adm{position:fixed;inset:0;z-index:50;background:rgba(20,18,16,.45);display:grid;place-items:center;padding:16px}
+.adm[hidden]{display:none}
+.adm-box{background:#fff;color:var(--ink);width:min(640px,100%);max-height:calc(100vh - 32px);overflow:auto;border-radius:6px;border-top:4px solid var(--ink);padding:22px 24px 26px;box-shadow:0 30px 60px -20px rgba(40,25,10,.45)}
+.adm-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.adm-head h2{font-size:21px}
+.adm-x{font:inherit;font-size:24px;line-height:1;background:none;border:0;color:var(--mute);cursor:pointer;width:44px;height:44px}
+.adm-l{display:block;font-size:13px;color:var(--mute);margin:14px 0 4px}
+.adm-box input:not([type=checkbox]):not([type=file]),.adm-box textarea{width:100%;max-width:none;font:inherit;font-size:16px;color:var(--ink);background:#fff;border:1px solid var(--sand);border-radius:4px;padding:10px 12px;min-height:44px}
+.adm-box textarea{line-height:1.7;resize:vertical}
+.adm-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:12px}
+.adm-tok{border:1px solid var(--line);border-radius:4px;padding:10px 12px;margin-bottom:14px;font-size:14px}
+.adm-tok summary{cursor:pointer;color:var(--mute)}.adm-tok input{margin-top:10px}
+.adm-chk{display:flex;align-items:center;gap:8px;margin-top:10px;color:var(--mute);cursor:pointer}
+.adm-chk input{flex:none;width:18px;height:18px;min-height:0;margin:0;padding:0;accent-color:var(--ink)}
+.adm-drop{display:grid;place-items:center;text-align:center;border:2px dashed var(--sand);border-radius:6px;min-height:110px;padding:16px;cursor:pointer;color:var(--mute);background:var(--tagbg)}
+.adm-drop.on{border-color:var(--olive);color:var(--olive)}
+.adm-drop input{position:absolute;width:1px;height:1px;opacity:0}
+.adm-go{margin-top:20px;font:inherit;font-weight:700;min-height:48px;width:100%;border:0;border-radius:4px;background:var(--ink);color:#fff;cursor:pointer}
+.adm-go:disabled{opacity:.5;cursor:wait}
+.adm-msg{margin:14px 0 0;font-size:14px;color:var(--olive);min-height:1em}.adm-msg.bad{color:var(--seal)}
+@media(max-width:600px){.adm-row{grid-template-columns:minmax(0,1fr)}}
 </style>
 </head>
 <body>
@@ -242,41 +264,65 @@ input,select{border-color:var(--sand)}
   <p>© <span id="yr"></span> 研究者総覧　掲載論文の著作権は著者に帰属します。</p>
 </div></footer>
 
+
+<div class="adm" id="adm" hidden role="dialog" aria-modal="true" aria-labelledby="admTitle">
+  <div class="adm-box">
+    <div class="adm-head"><h2 id="admTitle">論文の投稿</h2><button type="button" class="adm-x" id="admClose" aria-label="閉じる">×</button></div>
+
+    <div id="admGate" hidden>
+      <label class="adm-l" for="admCmd">コマンド</label>
+      <input id="admCmd" type="password" autocomplete="off">
+      <p class="adm-msg" id="admGateMsg"></p>
+    </div>
+
+    <div id="admMain" hidden>
+      <details class="adm-tok" id="admTokBox">
+        <summary>GitHubトークン <span id="admTokState"></span></summary>
+        <input id="admTok" type="password" autocomplete="off" placeholder="github_pat_...">
+        <label class="adm-chk"><input type="checkbox" id="admRemember"> この端末に記憶する</label>
+      </details>
+
+      <label class="adm-drop" id="admDrop">
+        <input type="file" id="admFile" accept="application/pdf">
+        <span id="admDropTxt">論文のPDFを選ぶ、またはここにドロップ</span>
+      </label>
+
+      <form id="admForm" hidden>
+        <label class="adm-l" for="fTitle">タイトル</label><input id="fTitle" required>
+        <label class="adm-l" for="fTitleEn">英語タイトル</label><input id="fTitleEn">
+        <div class="adm-row">
+          <div><label class="adm-l" for="fDate">公開日</label><input id="fDate" type="date" required></div>
+          <div><label class="adm-l" for="fType">種類</label><input id="fType" value="論文（個人研究・第1版）"></div>
+        </div>
+        <label class="adm-l" for="fKw">キーワード（、区切り）</label><input id="fKw">
+        <label class="adm-l" for="fAbs">要約（要旨）</label><textarea id="fAbs" rows="7" required></textarea>
+        <label class="adm-l" for="fId">ページのID（URLになります）</label><input id="fId" required pattern="[a-z0-9\-]+">
+        <button type="submit" class="adm-go" id="admGo">公開する</button>
+      </form>
+      <p class="adm-msg" id="admMsg" role="status"></p>
+    </div>
+  </div>
+</div>
 <script>
-/* ===== 論文の追加はここだけ =====
-   1. このHTMLと同じ場所に「papers」フォルダを作り、PDFを入れる
-   2. 下のリストに { ... }, を1件コピーして書き換える
-   id は半角英小文字・数字・ハイフンのみ / date は 2026-11-26 の形 */
-const PAPERS = [
-  {
-    id: "kyusai-to-ishi",
-    title: "看護における救済の志向と患者の意思――善意による「誘導」の哲学的検討",
-    titleEn: "Benevolence as Inducement: A Philosophical Examination of the Nurse's Will to Save and the Patient's Expressed Will",
-    date: "2026-11-26",
-    pdf: "papers/kyusai-to-ishi-2026.pdf",
-    type: "論文（個人研究・第1版）",
-    keywords: ["意思の尊重", "誘導", "パターナリズム", "我と汝", "愛の闘争"],
-    abstract: "本稿は、看護師が患者を救おうと志向することが、患者の意思の尊重と両立するかを問う。ブーバーの「我－汝／我－それ」、ソシュールの差異の体系としての言語観、フロムの尊重概念、ヤスパースの「愛の闘争」を理論的枠組みとして概念分析を行い、救済の志向に基づく説得が、意思の尊重と両立しない構造をもつことを論証する。本稿の主張は、患者が表出した言葉こそが本人の意思であり、看護師がそれを変えようとすることは援助ではなく誘導である、というものである。さらに、看護師と患者の非対称性、言葉と深層の意思の不一致、判断能力の低下、安全確保の必要性といった想定される反論を検討し、最後に看護記録の言語や意思決定支援の実践に対する含意と、本研究の限界を論じる。"
-  },
-];
-/* ===== ここまで ===== */
 {
+  /* ===== 設定 ===== */
+  const REPO = { owner: "researcher-soran", name: "researcher-soran.github.io", branch: "main" };
+  const SITE = "https://researcher-soran.github.io/";
+  const SECRET_HASH = "ce0b32df702f6ec4fc0ea09c88fc33f7cd982b6c8517c47b36975b4b8950f63e"; // 秘密のコマンドのハッシュ（コマンド本体は書かない）
+  const SECRET_LEN = 10;
+  const PDFJS = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/";
+  const CMAP_URL = PDFJS + "cmaps/";
+  /* ================ */
+
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const jp = (d) => { const [y,m,dd] = String(d).split("-"); return y ? `${y}年${+m}月${+dd}日` : ""; };
-  const papers = [...PAPERS].map(p => ({ type: "論文", keywords: [], abstract: "", ...p })).sort((a,b) => a.date < b.date ? 1 : -1);
-  $("yr").textContent = new Date().getFullYear();
-  $("n").textContent = papers.length;
-  if (papers[0]) { $("opTitle").textContent = papers[0].title; $("opDate").textContent = jp(papers[0].date); $("op").href = "#" + papers[0].id; }
-  else $("op").hidden = true;
-
-  const years = [...new Set(papers.map(p => p.date.slice(0,4)))];
-  $("y").insertAdjacentHTML("beforeend", years.map(y => `<option>${esc(y)}</option>`).join(""));
-  const kws = [...new Set(papers.flatMap(p => p.keywords))];
-  $("kwbar").innerHTML = kws.map(k => `<button type="button" aria-pressed="false" data-k="${esc(k)}">${esc(k)}</button>`).join("");
   const tags = (kw) => kw.map(k => `<li>${esc(k)}</li>`).join("");
-
+  let papers = [];
   let kw = "";
+
+  $("yr").textContent = new Date().getFullYear();
+
   const render = () => {
     const t = $("q").value.trim().toLowerCase(), y = $("y").value;
     const shown = papers.filter(p => (!t || (p.title+" "+p.abstract+" "+p.keywords.join(" ")).toLowerCase().includes(t)) && (!y || p.date.startsWith(y)) && (!kw || p.keywords.includes(kw)));
@@ -290,6 +336,19 @@ const PAPERS = [
       </li>`).join("");
     $("empty").hidden = shown.length > 0;
   };
+
+  const setup = () => {
+    papers = papers.map(p => ({ type: "論文", keywords: [], abstract: "", ...p })).sort((a,b) => String(b.date).localeCompare(String(a.date)));
+    $("n").textContent = papers.length;
+    if (papers[0]) { $("op").hidden = false; $("opTitle").textContent = papers[0].title; $("opDate").textContent = jp(papers[0].date); $("op").href = "#" + papers[0].id; }
+    else $("op").hidden = true;
+    const years = [...new Set(papers.map(p => p.date.slice(0,4)))];
+    $("y").innerHTML = '<option value="">すべての年</option>' + years.map(y => `<option>${esc(y)}</option>`).join("");
+    const kws = [...new Set(papers.flatMap(p => p.keywords))];
+    $("kwbar").innerHTML = kws.map(k => `<button type="button" aria-pressed="false" data-k="${esc(k)}">${esc(k)}</button>`).join("");
+    render(); route();
+  };
+
   $("q").addEventListener("input", render);
   $("y").addEventListener("change", render);
   $("kwbar").addEventListener("click", (e) => {
@@ -299,7 +358,7 @@ const PAPERS = [
     render();
   });
 
-  const route = () => {
+  function route() {
     const p = papers.find(x => x.id === location.hash.slice(1));
     $("home").hidden = !!p; $("detail").hidden = !p;
     if (p) {
@@ -314,7 +373,7 @@ const PAPERS = [
       document.title = "研究者詳細 - 相良 壮琉";
       $("dFrame").removeAttribute("src");
     }
-  };
+  }
   $("back").addEventListener("click", () => { location.hash = "papers"; });
   addEventListener("hashchange", route);
   $("copy").addEventListener("click", async () => {
@@ -323,7 +382,194 @@ const PAPERS = [
     catch { const r = document.createRange(); r.selectNodeContents($("cite")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = "選択しました"; }
     setTimeout(() => b.textContent = "コピー", 1800);
   });
-  render(); route();
+
+  fetch("papers.json?v=" + Date.now()).then(r => r.ok ? r.json() : []).catch(() => []).then(d => { papers = Array.isArray(d) ? d : []; setup(); });
+
+  /* ===== 秘密のコマンド ===== */
+  const sha256 = async (s) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))].map(b => b.toString(16).padStart(2, "0")).join("");
+  const isSecret = async (s) => s.length === SECRET_LEN && (await sha256(s)) === SECRET_HASH;
+  let buf = "";
+  addEventListener("keydown", async (e) => {
+    if (e.target.closest && e.target.closest("input,textarea,select")) return;
+    if (e.key.length !== 1) return;
+    buf = (buf + e.key).slice(-SECRET_LEN);
+    if (await isSecret(buf)) { buf = ""; openAdmin(true); }
+  });
+  // スマホ用：左上の「研究者総覧」を2秒以内に7回タップ → コマンド入力欄
+  let taps = [];
+  document.querySelector(".brand").addEventListener("click", (e) => {
+    const now = Date.now(); taps = taps.filter(t => now - t < 2000); taps.push(now);
+    if (taps.length >= 7) { e.preventDefault(); taps = []; openAdmin(false); }
+  });
+  $("admCmd").addEventListener("input", async () => {
+    if (await isSecret($("admCmd").value)) { $("admCmd").value = ""; showMain(); }
+  });
+
+  /* ===== 投稿パネル ===== */
+  const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} } };
+  const msg = (t, bad) => { $("admMsg").textContent = t; $("admMsg").classList.toggle("bad", !!bad); };
+  function openAdmin(unlocked) {
+    $("adm").hidden = false; document.body.style.overflow = "hidden";
+    if (unlocked) showMain(); else { $("admGate").hidden = false; $("admMain").hidden = true; $("admCmd").focus(); }
+  }
+  function showMain() {
+    $("admGate").hidden = true; $("admMain").hidden = false;
+    const saved = store.get("soran_tok");
+    if (saved) { $("admTok").value = saved; $("admRemember").checked = true; }
+    $("admTokState").textContent = $("admTok").value ? "（入力済み）" : "（未入力）";
+    $("admTokBox").open = !$("admTok").value;
+    loadPdfjs().catch(() => {});
+  }
+  const closeAdmin = () => { $("adm").hidden = true; document.body.style.overflow = ""; $("admCmd").value = ""; };
+  $("admClose").addEventListener("click", closeAdmin);
+  $("adm").addEventListener("click", (e) => { if (e.target === $("adm")) closeAdmin(); });
+  addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("adm").hidden) closeAdmin(); });
+  $("admTok").addEventListener("input", () => $("admTokState").textContent = $("admTok").value ? "（入力済み）" : "（未入力）");
+
+  let pdfjsReady = null;
+  function loadPdfjs() {
+    if (pdfjsReady) return pdfjsReady;
+    pdfjsReady = new Promise((ok, ng) => {
+      const s = document.createElement("script");
+      s.src = PDFJS + "build/pdf.min.js";
+      s.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + "build/pdf.worker.min.js"; ok(window.pdfjsLib); };
+      s.onerror = () => { pdfjsReady = null; ng(new Error("PDF読み込み用の部品を取得できませんでした")); };
+      document.head.appendChild(s);
+    });
+    return pdfjsReady;
+  }
+
+// 論文PDFからタイトル・英題・要旨・キーワードを取り出す（ブラウザと共通のロジック）
+async function analyzePdf(pdfjsLib, data) {
+  const doc = await pdfjsLib.getDocument({ data, cMapUrl: CMAP_URL, cMapPacked: true }).promise;
+  const pages = [];
+  let first = [];
+  const maxPages = Math.min(doc.numPages, 4);
+  for (let i = 1; i <= maxPages; i++) {
+    const page = await doc.getPage(i);
+    const tc = await page.getTextContent();
+    if (i === 1) first = tc.items.filter((it) => it.str && it.str.trim());
+    pages.push(tc.items.map((it) => it.str + (it.hasEOL ? "\n" : "")).join(""));
+  }
+  const text = pages.join("\n");
+  const clean = (s) => s
+    .replace(/[ \t　]*\n[ \t　]*/g, "\n")
+    .replace(/([^\x00-\x7F])\n(?=[^\x00-\x7F])/g, "$1")   // 日本語どうしの改行はつなげる
+    .replace(/\n+/g, " ")
+    .replace(/[ \t　]{2,}/g, " ")
+    .trim();
+
+  // タイトル：1ページ目で一番大きい文字の部分
+  const h = (it) => Math.abs(it.transform[3]) || it.height || 0;
+  const maxH = Math.max(0, ...first.map(h));
+  const title = clean(first.filter((it) => h(it) >= maxH * 0.92).map((it) => it.str + (it.hasEOL ? "\n" : "")).join(""));
+
+  // 要旨：「要旨」から「キーワード」までのあいだ
+  let abstract = "";
+  const m = text.match(/(?:要\s*旨|抄\s*録|概\s*要)\s*\n?([\s\S]*?)(?=キーワード|Key\s*words|Abstract|\n\s*1\s*[．.])/);
+  if (m) abstract = clean(m[1]);
+  if (!abstract) abstract = clean(text).slice(0, 400);
+
+  // キーワード
+  let keywords = [];
+  const k = text.match(/キーワード\s*[：:]\s*([^\n]+)/);
+  if (k) keywords = k[1].split(/[、,，・;；]/).map((s) => s.trim()).filter(Boolean).slice(0, 10);
+
+  // 英題：1ページ目の「要旨」より前で、英字が多い行
+  let titleEn = "";
+  const head = text.split(/要\s*旨/)[0] || "";
+  const lines = head.split("\n").map((s) => s.trim()).filter(Boolean);
+  const enLines = [];
+  for (const ln of lines) {
+    const ascii = (ln.match(/[A-Za-z]/g) || []).length;
+    if (ascii > 10 && ascii / ln.length > 0.6) enLines.push(ln);
+    else if (enLines.length) break;
+  }
+  titleEn = enLines.join(" ").replace(/\s+/g, " ").trim();
+
+  // 日付：「公開日」「2026年11月26日」など
+  let date = "";
+  const d = text.match(/(20\d{2})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+  if (d) date = `${d[1]}-${d[2].padStart(2, "0")}-${d[3].padStart(2, "0")}`;
+
+  return { title, titleEn, abstract, keywords, date, pages: doc.numPages };
+}
+
+  const slug = (date) => "paper-" + (date || new Date().toISOString().slice(0,10)).replace(/-/g, "") + "-" + Math.random().toString(36).slice(2, 6);
+  let pdfBytes = null;
+
+  async function takeFile(file) {
+    if (!file) return;
+    if (file.type !== "application/pdf" && !/\.pdf$/i.test(file.name)) { msg("PDFファイルを選んでください。", true); return; }
+    $("admDropTxt").textContent = file.name;
+    msg("PDFを読んで要約を作っています…");
+    try {
+      pdfBytes = new Uint8Array(await file.arrayBuffer());
+      const lib = await loadPdfjs();
+      const r = await analyzePdf(lib, pdfBytes.slice());
+      $("fTitle").value = r.title || file.name.replace(/\.pdf$/i, "");
+      $("fTitleEn").value = r.titleEn;
+      $("fDate").value = r.date || new Date().toISOString().slice(0,10);
+      $("fKw").value = r.keywords.join("、");
+      $("fAbs").value = r.abstract;
+      $("fId").value = slug($("fDate").value);
+      $("admForm").hidden = false;
+      msg(`読み取り完了（${r.pages}ページ）。内容を確認して「公開する」を押してください。`);
+    } catch (err) { msg("PDFを読めませんでした：" + err.message, true); }
+  }
+  $("admFile").addEventListener("change", (e) => takeFile(e.target.files[0]));
+  ["dragover","dragenter"].forEach(t => $("admDrop").addEventListener(t, (e) => { e.preventDefault(); $("admDrop").classList.add("on"); }));
+  ["dragleave","drop"].forEach(t => $("admDrop").addEventListener(t, () => $("admDrop").classList.remove("on")));
+  $("admDrop").addEventListener("drop", (e) => { e.preventDefault(); takeFile(e.dataTransfer.files[0]); });
+
+  // GitHub API
+  const b64bytes = (u8) => { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000)); return btoa(s); };
+  const b64text = (t) => b64bytes(new TextEncoder().encode(t));
+  const unb64text = (b) => new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\s/g, "")), c => c.charCodeAt(0)));
+  async function gh(path, opt = {}) {
+    const res = await fetch(`https://api.github.com/repos/${REPO.owner}/${REPO.name}/contents/${path}` + (opt.method ? "" : `?ref=${REPO.branch}`), {
+      ...opt, headers: { "Accept": "application/vnd.github+json", "Authorization": "Bearer " + $("admTok").value.trim(), ...(opt.headers || {}) }
+    });
+    if (res.status === 404 && !opt.method) return null;
+    if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(`${res.status} ${j.message || ""}`.trim()); }
+    return res.json();
+  }
+  const put = (path, content, sha, message) => gh(path, { method: "PUT", body: JSON.stringify({ message, content, branch: REPO.branch, ...(sha ? { sha } : {}) }) });
+  const sitemap = (list) => `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${SITE}</loc><lastmod>${list[0] ? list[0].date : new Date().toISOString().slice(0,10)}</lastmod></url>\n` + list.map(p => `  <url><loc>${SITE}${encodeURI(p.pdf)}</loc><lastmod>${p.date}</lastmod></url>`).join("\n") + "\n</urlset>\n";
+
+  $("admForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!$("admTok").value.trim()) { $("admTokBox").open = true; msg("GitHubトークンを入れてください。", true); return; }
+    if (!pdfBytes) { msg("PDFを選んでください。", true); return; }
+    const id = $("fId").value.trim();
+    if (!/^[a-z0-9-]+$/.test(id)) { msg("IDは半角英小文字・数字・ハイフンだけにしてください。", true); return; }
+    const entry = {
+      id, title: $("fTitle").value.trim(), titleEn: $("fTitleEn").value.trim(), date: $("fDate").value,
+      pdf: `papers/${id}.pdf`, type: $("fType").value.trim() || "論文",
+      keywords: $("fKw").value.split(/[、,，]/).map(s => s.trim()).filter(Boolean), abstract: $("fAbs").value.trim()
+    };
+    $("admGo").disabled = true;
+    try {
+      store.set("soran_tok", $("admRemember").checked ? $("admTok").value.trim() : null);
+      msg("1/3 いまの論文一覧を確認しています…");
+      const cur = await gh("papers.json");
+      const list = cur ? JSON.parse(unb64text(cur.content)) : [];
+      if (list.some(p => p.id === id)) throw new Error("同じIDの論文がすでにあります。IDを変えてください。");
+      if (await gh(entry.pdf)) throw new Error("同じ名前のPDFがすでにあります。IDを変えてください。");
+      msg("2/3 PDFをアップロードしています…");
+      await put(entry.pdf, b64bytes(pdfBytes), null, `論文を追加: ${entry.title}`);
+      const next = [entry, ...list].sort((a,b) => String(b.date).localeCompare(String(a.date)));
+      msg("3/3 論文一覧とサイトマップを更新しています…");
+      await put("papers.json", b64text(JSON.stringify(next, null, 2) + "\n"), cur && cur.sha, `論文一覧を更新: ${entry.title}`);
+      const sm = await gh("sitemap.xml");
+      await put("sitemap.xml", b64text(sitemap(next)), sm && sm.sha, "サイトマップを更新");
+      papers = next; setup();
+      msg("公開しました。サイトに反映されるまで1〜3分かかります。");
+      $("admForm").hidden = true; $("admFile").value = ""; $("admDropTxt").textContent = "論文のPDFを選ぶ、またはここにドロップ"; pdfBytes = null;
+    } catch (err) {
+      msg("うまくいきませんでした：" + err.message + (/401|403|Bad credentials/.test(err.message) ? "（トークンが正しいか、権限があるか確かめてください）" : ""), true);
+    } finally { $("admGo").disabled = false; }
+  });
 }
 </script>
 </body>
