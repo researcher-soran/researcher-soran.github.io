@@ -185,6 +185,7 @@ input,select{border-color:var(--sand)}
 .adm-mode{margin:0;font-size:13px;color:var(--olive);font-weight:700}
 .adm-btns{display:flex;gap:10px;margin-top:20px}.adm-btns .adm-go{margin:0;flex:1}.adm-btns .adm-sub{min-height:48px}
 .adm-box input[readonly]{background:var(--tagbg);color:var(--mute)}
+.doi{margin:6px 0 0;color:var(--mute);font-size:15px}.doi a{color:var(--ink)}
 </style>
 </head>
 <body>
@@ -259,6 +260,7 @@ input,select{border-color:var(--sand)}
   <h1 class="art-title" id="dTitle"></h1>
   <p class="en-title" id="dTitleEn" lang="en"></p>
   <p class="byline">著者：相良 壮琉（Sagara Takeru）</p>
+  <p class="doi" id="dDoiP" hidden>DOI：<a id="dDoi" target="_blank" rel="noopener"></a></p>
   <ul class="tags" id="dTags"></ul>
   <div class="art-grid">
     <section class="abs-box">
@@ -316,6 +318,7 @@ input,select{border-color:var(--sand)}
         <div><label class="adm-l" for="fType">種類</label><input id="fType" value="論文（個人研究・第1版）"></div>
       </div>
       <label class="adm-l" for="fKw">キーワード（、区切り）</label><input id="fKw">
+      <label class="adm-l" for="fDoi">DOI（あれば。例：10.5281/zenodo.24548773）</label><input id="fDoi" placeholder="10.xxxx/xxxx">
       <label class="adm-l" for="fAbs">要約（要旨）</label><textarea id="fAbs" rows="7" required></textarea>
       <label class="adm-l" for="fId">ページのID（URLになります）</label><input id="fId" required pattern="[a-z0-9\-]+">
       <div class="adm-btns"><button type="button" class="adm-sub" id="admCancel">やめる</button><button type="submit" class="adm-go" id="admGo">公開する</button></div>
@@ -352,7 +355,7 @@ input,select{border-color:var(--sand)}
         <h3><a href="#${esc(p.id)}">${esc(p.title)}</a></h3>
         <p class="abs">${esc(p.abstract)}</p>
         ${p.keywords.length ? `<ul class="tags">${tags(p.keywords)}</ul>` : ""}
-        <p class="acts"><a href="#${esc(p.id)}">要旨と本文</a><a href="${esc(p.pdf)}" target="_blank" rel="noopener">PDF</a></p>
+        <p class="acts"><a href="#${esc(p.id)}">要旨と本文</a><a href="${esc(p.pdf)}" target="_blank" rel="noopener">PDF</a>${p.doi ? `<a href="https://doi.org/${esc(p.doi)}" target="_blank" rel="noopener">DOI</a>` : ""}</p>
       </li>`).join("");
     $("empty").hidden = shown.length > 0;
   };
@@ -386,8 +389,9 @@ input,select{border-color:var(--sand)}
       $("dDate").textContent = jp(p.date); $("dType").textContent = p.type;
       $("dTitle").textContent = p.title; $("dTitleEn").textContent = p.titleEn || ""; $("dAbs").textContent = p.abstract;
       $("dTags").innerHTML = tags(p.keywords);
+      $("dDoiP").hidden = !p.doi; if (p.doi) { $("dDoi").textContent = p.doi; $("dDoi").href = "https://doi.org/" + p.doi; }
       $("dOpen").href = p.pdf; $("dDl").href = p.pdf; $("dFrame").src = p.pdf + "#view=FitH";
-      $("cite").textContent = `相良壮琉（${p.date.slice(0,4)}）「${p.title}」研究者総覧.`;
+      $("cite").textContent = `相良壮琉（${p.date.slice(0,4)}）「${p.title}」研究者総覧.` + (p.doi ? ` https://doi.org/${p.doi}` : "");
       scrollTo(0, 0);
     } else {
       document.title = "研究者詳細 - 相良 壮琉";
@@ -468,7 +472,7 @@ input,select{border-color:var(--sand)}
 
   function fillForm(p) {
     $("fTitle").value = p.title || ""; $("fTitleEn").value = p.titleEn || ""; $("fDate").value = p.date || "";
-    $("fType").value = p.type || "論文"; $("fKw").value = (p.keywords || []).join("、"); $("fAbs").value = p.abstract || ""; $("fId").value = p.id || "";
+    $("fType").value = p.type || "論文"; $("fKw").value = (p.keywords || []).join("、"); $("fAbs").value = p.abstract || ""; $("fId").value = p.id || ""; $("fDoi").value = p.doi || "";
   }
   function startEdit(p) {
     mode = "edit"; editing = p; confirmId = null;
@@ -611,8 +615,11 @@ async function analyzePdf(pdfjsLib, data) {
     const fields = {
       title: $("fTitle").value.trim(), titleEn: $("fTitleEn").value.trim(), date: $("fDate").value,
       type: $("fType").value.trim() || "論文",
-      keywords: $("fKw").value.split(/[、,，]/).map(s => s.trim()).filter(Boolean), abstract: $("fAbs").value.trim()
+      keywords: $("fKw").value.split(/[、,，]/).map(s => s.trim()).filter(Boolean), abstract: $("fAbs").value.trim(),
+      doi: $("fDoi").value.trim().replace(/^https?:\/\/(dx\.)?doi\.org\//i, "").replace(/^doi:\s*/i, "")
     };
+    if (fields.doi && !/^10\.\d{4,9}\/\S+$/.test(fields.doi)) { msg("DOIは「10.」で始まる形で入れてください。", true); return; }
+    if (!fields.doi) delete fields.doi;
     $("admGo").disabled = true;
     try {
       rememberTok();
@@ -621,7 +628,7 @@ async function analyzePdf(pdfjsLib, data) {
         const { sha, list } = await readList();
         const i = list.findIndex(p => p.id === editing.id);
         if (i < 0) throw new Error("この論文が一覧に見つかりませんでした。");
-        list[i] = { ...list[i], ...fields };
+        list[i] = { ...list[i], ...fields }; if (!fields.doi) delete list[i].doi;
         msg("2/2 変更を保存しています…");
         await writeList(list.sort(byDate), sha, `論文を編集: ${fields.title}`);
         showTab("list"); msg("保存しました。サイトに反映されるまで1〜3分かかります。");
