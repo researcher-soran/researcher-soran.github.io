@@ -169,6 +169,22 @@ input,select{border-color:var(--sand)}
 .adm-go:disabled{opacity:.5;cursor:wait}
 .adm-msg{margin:14px 0 0;font-size:14px;color:var(--olive);min-height:1em}.adm-msg.bad{color:var(--seal)}
 @media(max-width:600px){.adm-row{grid-template-columns:minmax(0,1fr)}}
+.adm-tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin:4px 0 14px}
+.adm-tabs button{font:inherit;font-size:14px;background:none;border:0;border-bottom:2px solid transparent;padding:10px 12px;min-height:44px;color:var(--mute);cursor:pointer;margin-bottom:-1px}
+.adm-tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--ink);font-weight:700}
+.adm-list{list-style:none;margin:0;padding:0}
+.adm-list li{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--line)}
+.adm-it{display:grid;flex:1 1 260px}.adm-it b{font-weight:700;line-height:1.5}.adm-it small{color:var(--mute);font-size:13px}
+.adm-acts,.adm-cf{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.adm-cf span{font-size:13px;color:var(--seal)}
+.adm-sub,.adm-del{font:inherit;font-size:14px;min-height:40px;padding:0 14px;border-radius:4px;cursor:pointer;background:#fff}
+.adm-sub{border:1px solid var(--sand);color:var(--ink)}
+.adm-del{border:1px solid var(--seal);color:var(--seal)}
+.adm-cf .adm-del{background:var(--seal);color:#fff}
+.adm-none{color:var(--mute);font-size:14px}
+.adm-mode{margin:0;font-size:13px;color:var(--olive);font-weight:700}
+.adm-btns{display:flex;gap:10px;margin-top:20px}.adm-btns .adm-go{margin:0;flex:1}.adm-btns .adm-sub{min-height:48px}
+.adm-box input[readonly]{background:var(--tagbg);color:var(--mute)}
 </style>
 </head>
 <body>
@@ -267,40 +283,44 @@ input,select{border-color:var(--sand)}
 
 <div class="adm" id="adm" hidden role="dialog" aria-modal="true" aria-labelledby="admTitle">
   <div class="adm-box">
-    <div class="adm-head"><h2 id="admTitle">論文の投稿</h2><button type="button" class="adm-x" id="admClose" aria-label="閉じる">×</button></div>
+    <div class="adm-head"><h2 id="admTitle">論文の管理</h2><button type="button" class="adm-x" id="admClose" aria-label="閉じる">×</button></div>
 
-    <div id="admGate" hidden>
-      <label class="adm-l" for="admCmd">コマンド</label>
-      <input id="admCmd" type="password" autocomplete="off">
-      <p class="adm-msg" id="admGateMsg"></p>
+    <details class="adm-tok" id="admTokBox">
+      <summary>GitHubトークン <span id="admTokState"></span></summary>
+      <input id="admTok" type="password" autocomplete="off" placeholder="github_pat_...">
+      <label class="adm-chk"><input type="checkbox" id="admRemember"> この端末に記憶する</label>
+    </details>
+
+    <div class="adm-tabs" role="tablist">
+      <button type="button" role="tab" id="tabBtnList" aria-selected="true">公開中の論文</button>
+      <button type="button" role="tab" id="tabBtnNew" aria-selected="false">新しく投稿</button>
     </div>
 
-    <div id="admMain" hidden>
-      <details class="adm-tok" id="admTokBox">
-        <summary>GitHubトークン <span id="admTokState"></span></summary>
-        <input id="admTok" type="password" autocomplete="off" placeholder="github_pat_...">
-        <label class="adm-chk"><input type="checkbox" id="admRemember"> この端末に記憶する</label>
-      </details>
+    <div id="tabList">
+      <ul class="adm-list" id="admList"></ul>
+    </div>
 
+    <div id="tabNew" hidden>
       <label class="adm-drop" id="admDrop">
         <input type="file" id="admFile" accept="application/pdf">
         <span id="admDropTxt">論文のPDFを選ぶ、またはここにドロップ</span>
       </label>
-
-      <form id="admForm" hidden>
-        <label class="adm-l" for="fTitle">タイトル</label><input id="fTitle" required>
-        <label class="adm-l" for="fTitleEn">英語タイトル</label><input id="fTitleEn">
-        <div class="adm-row">
-          <div><label class="adm-l" for="fDate">公開日</label><input id="fDate" type="date" required></div>
-          <div><label class="adm-l" for="fType">種類</label><input id="fType" value="論文（個人研究・第1版）"></div>
-        </div>
-        <label class="adm-l" for="fKw">キーワード（、区切り）</label><input id="fKw">
-        <label class="adm-l" for="fAbs">要約（要旨）</label><textarea id="fAbs" rows="7" required></textarea>
-        <label class="adm-l" for="fId">ページのID（URLになります）</label><input id="fId" required pattern="[a-z0-9\-]+">
-        <button type="submit" class="adm-go" id="admGo">公開する</button>
-      </form>
-      <p class="adm-msg" id="admMsg" role="status"></p>
     </div>
+
+    <form id="admForm" hidden>
+      <p class="adm-mode" id="admMode"></p>
+      <label class="adm-l" for="fTitle">タイトル</label><input id="fTitle" required>
+      <label class="adm-l" for="fTitleEn">英語タイトル</label><input id="fTitleEn">
+      <div class="adm-row">
+        <div><label class="adm-l" for="fDate">公開日</label><input id="fDate" type="date" required></div>
+        <div><label class="adm-l" for="fType">種類</label><input id="fType" value="論文（個人研究・第1版）"></div>
+      </div>
+      <label class="adm-l" for="fKw">キーワード（、区切り）</label><input id="fKw">
+      <label class="adm-l" for="fAbs">要約（要旨）</label><textarea id="fAbs" rows="7" required></textarea>
+      <label class="adm-l" for="fId">ページのID（URLになります）</label><input id="fId" required pattern="[a-z0-9\-]+">
+      <div class="adm-btns"><button type="button" class="adm-sub" id="admCancel">やめる</button><button type="submit" class="adm-go" id="admGo">公開する</button></div>
+    </form>
+    <p class="adm-msg" id="admMsg" role="status"></p>
   </div>
 </div>
 <script>
@@ -387,44 +407,83 @@ input,select{border-color:var(--sand)}
 
   /* ===== 秘密のコマンド ===== */
   const sha256 = async (s) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))].map(b => b.toString(16).padStart(2, "0")).join("");
-  const isSecret = async (s) => s.length === SECRET_LEN && (await sha256(s)) === SECRET_HASH;
   let buf = "";
   addEventListener("keydown", async (e) => {
     if (e.target.closest && e.target.closest("input,textarea,select")) return;
-    if (e.key.length !== 1) return;
+    if (!$("adm").hidden || e.key.length !== 1) return;
     buf = (buf + e.key).slice(-SECRET_LEN);
-    if (await isSecret(buf)) { buf = ""; openAdmin(true); }
-  });
-  // スマホ用：左上の「研究者総覧」を2秒以内に7回タップ → コマンド入力欄
-  let taps = [];
-  document.querySelector(".brand").addEventListener("click", (e) => {
-    const now = Date.now(); taps = taps.filter(t => now - t < 2000); taps.push(now);
-    if (taps.length >= 7) { e.preventDefault(); taps = []; openAdmin(false); }
-  });
-  $("admCmd").addEventListener("input", async () => {
-    if (await isSecret($("admCmd").value)) { $("admCmd").value = ""; showMain(); }
+    if (buf.length === SECRET_LEN && (await sha256(buf)) === SECRET_HASH) { buf = ""; openAdmin(); }
   });
 
-  /* ===== 投稿パネル ===== */
+  /* ===== 管理パネル ===== */
   const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} } };
   const msg = (t, bad) => { $("admMsg").textContent = t; $("admMsg").classList.toggle("bad", !!bad); };
-  function openAdmin(unlocked) {
+  let mode = "new";        // "new" か "edit"
+  let editing = null;      // 編集中の論文
+  let confirmId = null;    // 削除の確認中の論文
+
+  function openAdmin() {
     $("adm").hidden = false; document.body.style.overflow = "hidden";
-    if (unlocked) showMain(); else { $("admGate").hidden = false; $("admMain").hidden = true; $("admCmd").focus(); }
-  }
-  function showMain() {
-    $("admGate").hidden = true; $("admMain").hidden = false;
     const saved = store.get("soran_tok");
-    if (saved) { $("admTok").value = saved; $("admRemember").checked = true; }
-    $("admTokState").textContent = $("admTok").value ? "（入力済み）" : "（未入力）";
-    $("admTokBox").open = !$("admTok").value;
+    if (saved && !$("admTok").value) { $("admTok").value = saved; $("admRemember").checked = true; }
+    tokState(); $("admTokBox").open = !$("admTok").value;
+    showTab("list"); msg("");
     loadPdfjs().catch(() => {});
   }
-  const closeAdmin = () => { $("adm").hidden = true; document.body.style.overflow = ""; $("admCmd").value = ""; };
+  const closeAdmin = () => { $("adm").hidden = true; document.body.style.overflow = ""; resetForm(); };
+  const tokState = () => $("admTokState").textContent = $("admTok").value ? "（入力済み）" : "（未入力）";
   $("admClose").addEventListener("click", closeAdmin);
   $("adm").addEventListener("click", (e) => { if (e.target === $("adm")) closeAdmin(); });
   addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("adm").hidden) closeAdmin(); });
-  $("admTok").addEventListener("input", () => $("admTokState").textContent = $("admTok").value ? "（入力済み）" : "（未入力）");
+  $("admTok").addEventListener("input", tokState);
+
+  function showTab(t) {
+    $("tabBtnList").setAttribute("aria-selected", String(t === "list"));
+    $("tabBtnNew").setAttribute("aria-selected", String(t === "new"));
+    $("tabList").hidden = t !== "list"; $("tabNew").hidden = t !== "new";
+    resetForm(); if (t === "list") renderAdminList();
+  }
+  $("tabBtnList").addEventListener("click", () => { showTab("list"); msg(""); });
+  $("tabBtnNew").addEventListener("click", () => { showTab("new"); msg(""); });
+
+  function renderAdminList() {
+    confirmId = confirmId && papers.some(p => p.id === confirmId) ? confirmId : null;
+    $("admList").innerHTML = papers.length ? papers.map(p => `
+      <li data-id="${esc(p.id)}">
+        <div class="adm-it"><b>${esc(p.title)}</b><small>${esc(jp(p.date))}・${esc(p.id)}</small></div>
+        ${confirmId === p.id
+          ? `<div class="adm-cf"><span>本当に削除しますか？PDFも消えます。</span><button type="button" class="adm-sub" data-act="no">やめる</button><button type="button" class="adm-del" data-act="yes">削除する</button></div>`
+          : `<div class="adm-acts"><button type="button" class="adm-sub" data-act="edit">編集</button><button type="button" class="adm-del" data-act="ask">削除</button></div>`}
+      </li>`).join("") : '<li class="adm-none">公開中の論文はまだありません。</li>';
+  }
+  $("admList").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    const id = b.closest("li").dataset.id, p = papers.find(x => x.id === id); if (!p) return;
+    const act = b.dataset.act;
+    if (act === "edit") startEdit(p);
+    else if (act === "ask") { confirmId = id; renderAdminList(); }
+    else if (act === "no") { confirmId = null; renderAdminList(); }
+    else if (act === "yes") deletePaper(p);
+  });
+
+  function fillForm(p) {
+    $("fTitle").value = p.title || ""; $("fTitleEn").value = p.titleEn || ""; $("fDate").value = p.date || "";
+    $("fType").value = p.type || "論文"; $("fKw").value = (p.keywords || []).join("、"); $("fAbs").value = p.abstract || ""; $("fId").value = p.id || "";
+  }
+  function startEdit(p) {
+    mode = "edit"; editing = p; confirmId = null;
+    $("tabList").hidden = true; fillForm(p);
+    $("fId").readOnly = true; $("admMode").textContent = "編集中：" + p.title;
+    $("admGo").textContent = "変更を保存"; $("admForm").hidden = false; msg("");
+    $("fTitle").focus();
+  }
+  function resetForm() {
+    mode = "new"; editing = null; pdfBytes = null;
+    $("admForm").hidden = true; $("fId").readOnly = false; $("admMode").textContent = "";
+    $("admGo").textContent = "公開する";
+    $("admFile").value = ""; $("admDropTxt").textContent = "論文のPDFを選ぶ、またはここにドロップ";
+  }
+  $("admCancel").addEventListener("click", () => { const back = mode === "edit" ? "list" : "new"; showTab(back); msg(""); });
 
   let pdfjsReady = null;
   function loadPdfjs() {
@@ -439,7 +498,6 @@ input,select{border-color:var(--sand)}
     return pdfjsReady;
   }
 
-// 論文PDFからタイトル・英題・要旨・キーワードを取り出す（ブラウザと共通のロジック）
 async function analyzePdf(pdfjsLib, data) {
   const doc = await pdfjsLib.getDocument({ data, cMapUrl: CMAP_URL, cMapPacked: true }).promise;
   const pages = [];
@@ -507,13 +565,9 @@ async function analyzePdf(pdfjsLib, data) {
       pdfBytes = new Uint8Array(await file.arrayBuffer());
       const lib = await loadPdfjs();
       const r = await analyzePdf(lib, pdfBytes.slice());
-      $("fTitle").value = r.title || file.name.replace(/\.pdf$/i, "");
-      $("fTitleEn").value = r.titleEn;
-      $("fDate").value = r.date || new Date().toISOString().slice(0,10);
-      $("fKw").value = r.keywords.join("、");
-      $("fAbs").value = r.abstract;
-      $("fId").value = slug($("fDate").value);
-      $("admForm").hidden = false;
+      const date = r.date || new Date().toISOString().slice(0,10);
+      fillForm({ title: r.title || file.name.replace(/\.pdf$/i, ""), titleEn: r.titleEn, date, type: "論文（個人研究・第1版）", keywords: r.keywords, abstract: r.abstract, id: slug(date) });
+      $("admMode").textContent = "新しい論文"; $("admForm").hidden = false;
       msg(`読み取り完了（${r.pages}ページ）。内容を確認して「公開する」を押してください。`);
     } catch (err) { msg("PDFを読めませんでした：" + err.message, true); }
   }
@@ -535,41 +589,76 @@ async function analyzePdf(pdfjsLib, data) {
     return res.json();
   }
   const put = (path, content, sha, message) => gh(path, { method: "PUT", body: JSON.stringify({ message, content, branch: REPO.branch, ...(sha ? { sha } : {}) }) });
+  const del = (path, sha, message) => gh(path, { method: "DELETE", body: JSON.stringify({ message, sha, branch: REPO.branch }) });
+  const byDate = (a, b) => String(b.date).localeCompare(String(a.date));
   const sitemap = (list) => `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${SITE}</loc><lastmod>${list[0] ? list[0].date : new Date().toISOString().slice(0,10)}</lastmod></url>\n` + list.map(p => `  <url><loc>${SITE}${encodeURI(p.pdf)}</loc><lastmod>${p.date}</lastmod></url>`).join("\n") + "\n</urlset>\n";
+  const needToken = () => { if ($("admTok").value.trim()) return false; $("admTokBox").open = true; msg("GitHubトークンを入れてください。", true); return true; };
+  const errMsg = (err) => "うまくいきませんでした：" + err.message + (/401|403|Bad credentials/.test(err.message) ? "（トークンが正しいか、権限があるか確かめてください）" : "");
+  async function readList() { const cur = await gh("papers.json"); return { sha: cur && cur.sha, list: cur ? JSON.parse(unb64text(cur.content)) : [] }; }
+  async function writeList(next, sha, message) {
+    await put("papers.json", b64text(JSON.stringify(next, null, 2) + "\n"), sha, message);
+    const sm = await gh("sitemap.xml");
+    await put("sitemap.xml", b64text(sitemap(next)), sm && sm.sha, "サイトマップを更新");
+    papers = next; setup();
+  }
+  const rememberTok = () => store.set("soran_tok", $("admRemember").checked ? $("admTok").value.trim() : null);
 
   $("admForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (!$("admTok").value.trim()) { $("admTokBox").open = true; msg("GitHubトークンを入れてください。", true); return; }
-    if (!pdfBytes) { msg("PDFを選んでください。", true); return; }
+    if (needToken()) return;
     const id = $("fId").value.trim();
     if (!/^[a-z0-9-]+$/.test(id)) { msg("IDは半角英小文字・数字・ハイフンだけにしてください。", true); return; }
-    const entry = {
-      id, title: $("fTitle").value.trim(), titleEn: $("fTitleEn").value.trim(), date: $("fDate").value,
-      pdf: `papers/${id}.pdf`, type: $("fType").value.trim() || "論文",
+    const fields = {
+      title: $("fTitle").value.trim(), titleEn: $("fTitleEn").value.trim(), date: $("fDate").value,
+      type: $("fType").value.trim() || "論文",
       keywords: $("fKw").value.split(/[、,，]/).map(s => s.trim()).filter(Boolean), abstract: $("fAbs").value.trim()
     };
     $("admGo").disabled = true;
     try {
-      store.set("soran_tok", $("admRemember").checked ? $("admTok").value.trim() : null);
-      msg("1/3 いまの論文一覧を確認しています…");
-      const cur = await gh("papers.json");
-      const list = cur ? JSON.parse(unb64text(cur.content)) : [];
-      if (list.some(p => p.id === id)) throw new Error("同じIDの論文がすでにあります。IDを変えてください。");
-      if (await gh(entry.pdf)) throw new Error("同じ名前のPDFがすでにあります。IDを変えてください。");
-      msg("2/3 PDFをアップロードしています…");
-      await put(entry.pdf, b64bytes(pdfBytes), null, `論文を追加: ${entry.title}`);
-      const next = [entry, ...list].sort((a,b) => String(b.date).localeCompare(String(a.date)));
-      msg("3/3 論文一覧とサイトマップを更新しています…");
-      await put("papers.json", b64text(JSON.stringify(next, null, 2) + "\n"), cur && cur.sha, `論文一覧を更新: ${entry.title}`);
-      const sm = await gh("sitemap.xml");
-      await put("sitemap.xml", b64text(sitemap(next)), sm && sm.sha, "サイトマップを更新");
-      papers = next; setup();
-      msg("公開しました。サイトに反映されるまで1〜3分かかります。");
-      $("admForm").hidden = true; $("admFile").value = ""; $("admDropTxt").textContent = "論文のPDFを選ぶ、またはここにドロップ"; pdfBytes = null;
-    } catch (err) {
-      msg("うまくいきませんでした：" + err.message + (/401|403|Bad credentials/.test(err.message) ? "（トークンが正しいか、権限があるか確かめてください）" : ""), true);
-    } finally { $("admGo").disabled = false; }
+      rememberTok();
+      if (mode === "edit") {
+        msg("1/2 いまの論文一覧を確認しています…");
+        const { sha, list } = await readList();
+        const i = list.findIndex(p => p.id === editing.id);
+        if (i < 0) throw new Error("この論文が一覧に見つかりませんでした。");
+        list[i] = { ...list[i], ...fields };
+        msg("2/2 変更を保存しています…");
+        await writeList(list.sort(byDate), sha, `論文を編集: ${fields.title}`);
+        showTab("list"); msg("保存しました。サイトに反映されるまで1〜3分かかります。");
+      } else {
+        if (!pdfBytes) { msg("PDFを選んでください。", true); return; }
+        const entry = { id, ...fields, pdf: `papers/${id}.pdf` };
+        msg("1/3 いまの論文一覧を確認しています…");
+        const { sha, list } = await readList();
+        if (list.some(p => p.id === id)) throw new Error("同じIDの論文がすでにあります。IDを変えてください。");
+        if (await gh(entry.pdf)) throw new Error("同じ名前のPDFがすでにあります。IDを変えてください。");
+        msg("2/3 PDFをアップロードしています…");
+        await put(entry.pdf, b64bytes(pdfBytes), null, `論文を追加: ${entry.title}`);
+        msg("3/3 論文一覧とサイトマップを更新しています…");
+        await writeList([entry, ...list].sort(byDate), sha, `論文一覧を更新: ${entry.title}`);
+        showTab("list"); msg("公開しました。サイトに反映されるまで1〜3分かかります。");
+      }
+    } catch (err) { msg(errMsg(err), true); }
+    finally { $("admGo").disabled = false; }
   });
+
+  async function deletePaper(p) {
+    if (needToken()) return;
+    for (const b of $("admList").querySelectorAll("button")) b.disabled = true;
+    try {
+      rememberTok();
+      msg("1/3 いまの論文一覧を確認しています…");
+      const { sha, list } = await readList();
+      const next = list.filter(x => x.id !== p.id);
+      msg("2/3 論文一覧とサイトマップから外しています…");
+      await writeList(next, sha, `論文を削除: ${p.title}`);
+      msg("3/3 PDFを削除しています…");
+      const f = await gh(p.pdf);
+      if (f) await del(p.pdf, f.sha, `PDFを削除: ${p.title}`);
+      confirmId = null; renderAdminList();
+      msg("削除しました。サイトに反映されるまで1〜3分かかります。");
+    } catch (err) { msg(errMsg(err), true); renderAdminList(); }
+  }
 }
 </script>
 </body>
