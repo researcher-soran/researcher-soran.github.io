@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://researcher-soran.github.io/sitemap.xml
